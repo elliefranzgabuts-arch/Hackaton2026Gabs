@@ -30,13 +30,26 @@ const navigation = [
 
 export default async function DashboardPage() {
   let user;
+  let accounts = [];
+  let accountsError = null;
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (error || !data.user) redirect("/login");
-    user = data.user;
+    if (userError || !userData.user) redirect("/login");
+    user = userData.user;
+
+    const { data, error } = await supabase
+      .from("simulated_accounts")
+      .select("id, account_name, currency, status")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      accountsError = error;
+    } else if (data) {
+      accounts = data;
+    }
   } catch {
     redirect("/login");
   }
@@ -191,14 +204,39 @@ export default async function DashboardPage() {
               <CreditCard className="text-[#315B43]" size={24} />
             </div>
 
-            <div className="mt-6 rounded-2xl border border-dashed border-[#DDE4D8] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#CFF5D2] text-[#315B43]">
-                <CreditCard size={23} />
-              </div>
-              <p className="mt-3 font-semibold">No cards to display yet</p>
-              <p className="mt-1 text-sm text-[#697568]">
-                Card creation will be available after secure persistence is set up.
-              </p>
+            <div className="mt-6">
+              {accountsError ? (
+                <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 p-6 text-center">
+                  <p className="text-sm text-red-600">Unable to load accounts. Please refresh the page.</p>
+                </div>
+              ) : accounts.length > 0 ? (
+                <div className="space-y-3">
+                  {accounts.map((account) => (
+                    <div
+                      key={account.id}
+                      className="flex items-center justify-between rounded-2xl border border-[#DDE4D8] bg-white p-4"
+                    >
+                      <div>
+                        <p className="font-semibold text-[#243326]">{account.account_name}</p>
+                        <p className="text-xs text-[#697568]">{account.currency}</p>
+                      </div>
+                      <span className="rounded-md bg-[#CFF5D2] px-2 py-1 text-[10px] font-bold uppercase text-[#315B43]">
+                        {account.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#DDE4D8] p-6 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#CFF5D2] text-[#315B43]">
+                    <CreditCard size={23} />
+                  </div>
+                  <p className="mt-3 font-semibold">No cards to display yet</p>
+                  <p className="mt-1 text-sm text-[#697568]">
+                    Card creation will be available after secure persistence is set up.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
